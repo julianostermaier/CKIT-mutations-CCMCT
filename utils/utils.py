@@ -13,6 +13,7 @@ import torch.optim as optim
 import pdb
 import torch.nn.functional as F
 import math
+from sklearn.model_selection import KFold
 from itertools import islice
 import collections
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -91,7 +92,23 @@ def print_network(net):
 	
 	print('Total number of parameters: %d' % num_params)
 	print('Total number of trainable parameters: %d' % num_params_train)
-
+    
+def generate_split_all_validated(samples, test_size=0.1, n_splits = 5, seed = 7):
+	# creates train test split and uses k-fold cross validation on the training set
+	indices = np.arange(samples).astype(int)
+    
+	all_test_ids = np.random.choice(indices, round(test_size*len(indices)))
+	remaining_ids = np.setdiff1d(indices, all_test_ids)
+        
+	print("all val")
+	k_fold = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
+	for train_idx, val_idx in k_fold.split(remaining_ids):
+        
+		sampled_train_ids = remaining_ids[train_idx]
+		all_val_ids = remaining_ids[val_idx]
+        
+		yield sampled_train_ids, all_val_ids, all_test_ids
+        
 
 def generate_split(cls_ids, val_num, test_num, samples, n_splits = 5,
 	seed = 7, label_frac = 1.0, custom_test_ids = None):

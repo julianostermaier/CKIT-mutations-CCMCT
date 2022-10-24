@@ -12,7 +12,7 @@ from scipy import stats
 from torch.utils.data import Dataset
 import h5py
 
-from utils.utils import generate_split, nth
+from utils.utils import generate_split, generate_split_all_validated, nth
 
 def save_splits(split_datasets, column_keys, filename, boolean_style=False):
 	splits = [split_datasets[i].slide_data['slide_id'] for i in range(len(split_datasets))]
@@ -41,6 +41,7 @@ class Generic_WSI_Classification_Dataset(Dataset):
 		patient_strat=False,
 		label_col = None,
 		patient_voting = 'max',
+        all_validated=False,
 		):
 		"""
 		Args:
@@ -58,6 +59,7 @@ class Generic_WSI_Classification_Dataset(Dataset):
 		self.patient_strat = patient_strat
 		self.train_ids, self.val_ids, self.test_ids  = (None, None, None)
 		self.data_dir = None
+		self.all_validated = all_validated # every slide is sampled exactly in one fold
 		if not label_col:
 			label_col = 'label'
 		self.label_col = label_col
@@ -162,8 +164,11 @@ class Generic_WSI_Classification_Dataset(Dataset):
 			settings.update({'cls_ids' : self.patient_cls_ids, 'samples': len(self.patient_data['case_id'])})
 		else:
 			settings.update({'cls_ids' : self.slide_cls_ids, 'samples': len(self.slide_data)})
-
-		self.split_gen = generate_split(**settings)
+        
+		if self.all_validated:
+			self.split_gen = generate_split_all_validated(samples=len(self.slide_data), test_size=0.1, n_splits=k, seed=self.seed)
+		else:
+			self.split_gen = generate_split(**settings)
 
 	def set_splits(self,start_from=None):
 		if start_from:

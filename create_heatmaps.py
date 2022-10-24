@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import pdb
 import os
+import glob
 import pandas as pd
 from utils.utils import *
 from math import floor
@@ -224,7 +225,9 @@ if __name__ == '__main__':
 		print('top left: ', top_left, ' bot right: ', bot_right)
 
 		if isinstance(data_args.data_dir, str):
-			slide_path = os.path.join(data_args.data_dir, slide_name)
+            # find files recursively in subfolders
+			slide_path = glob.glob(f'{data_args.data_dir}/**/{slide_name}*', 
+                   recursive = True)[0]
 		elif isinstance(data_args.data_dir, dict):
 			data_dir_key = process_stack.loc[i, data_args.data_dir_key]
 			slide_path = os.path.join(data_args.data_dir[data_dir_key], slide_name)
