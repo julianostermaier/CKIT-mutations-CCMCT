@@ -203,36 +203,38 @@ class HDF5Dataset(data.Dataset):
             self._add_data_infos(str(h5dataset_fp.resolve()), load_data)
             
     def __getitem__(self, index):
-        # get data
-        x = self.get_data("data", index)
+        # get coords of patch
+        x = self.get_data("coords", index)
         if self.transform:
             x = self.transform(x)
         else:
             x = torch.from_numpy(x)
 
-        # get label
-        y = self.get_data("label", index)
-        y = torch.from_numpy(y)
-        return (x, y)
+        return x
 
     def __len__(self):
         return len(self.get_data_infos('data'))
     
     def _add_data_infos(self, file_path, load_data):
         with h5py.File(file_path) as h5_file:
-            # Walk through all groups, extracting datasets
-            for gname, group in h5_file.items():
-                for dname, ds in group.items():
-                    # if data is not loaded its cache index is -1
-                    idx = -1
-                    if load_data:
-                        # add data to the data cache
-                        idx = self._add_to_cache(ds.value, file_path)
-                    
-                    # type is derived from the name of the dataset; we expect the dataset
-                    # name to have a name such as 'data' or 'label' to identify its type
-                    # we also store the shape of the data in case we need it
-                    self.data_info.append({'file_path': file_path, 'type': dname, 'shape': ds.value.shape, 'cache_idx': idx})
+            # get metadata for WSI
+			dset = h5_file['coords']
+			patch_level = f['coords'].attrs['patch_level']
+			patch_size = f['coords'].attrs['patch_size']
+
+			# iterate over coordinates of all patches in WSI
+			for patch_idx in range(dset.len()):
+				coord = dset[patch_idx]
+				idx = -1
+				if load_data:
+					# add data to the data cache
+					img = self.wsi.read_region(coord, patch_level, (patch_size, patch_size)).convert('RGB')
+					idx = self._add_to_cache(img, file_path)
+				
+				# type is derived from the name of the dataset; we expect the dataset
+				# name to have a name such as 'data' or 'label' to identify its type
+				# we also store the shape of the data in case we need it
+				self.data_info.append({'file_path': file_path, 'type' 'cache_idx': idx, 'coords': coord, 'patch_level': patch_level, 'patch_size': patch_size})
 
     def _load_data(self, file_path):
         """Load data to the cache given the file
