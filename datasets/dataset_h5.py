@@ -11,7 +11,6 @@ import helpers
 
 from torch.utils.data import Dataset, DataLoader, sampler
 from torchvision import transforms, utils, models
-from torch.utils import data
 import torch.nn.functional as F
 
 from PIL import Image
@@ -170,7 +169,7 @@ class Dataset_All_Bags(Dataset):
 		return self.df['slide_id'][idx]
 
 
-class HDF5Dataset(data.Dataset):
+class HDF5Dataset(Dataset):
     """Represents an abstract HDF5 dataset.
     
     Input params:
@@ -221,6 +220,7 @@ class HDF5Dataset(data.Dataset):
 			dset = h5_file['coords']
 			patch_level = f['coords'].attrs['patch_level']
 			patch_size = f['coords'].attrs['patch_size']
+			wsi = openslide.open_slide(slide_file_path) # ??
 
 			# iterate over coordinates of all patches in WSI
 			for patch_idx in range(dset.len()):
@@ -228,13 +228,11 @@ class HDF5Dataset(data.Dataset):
 				idx = -1
 				if load_data:
 					# add data to the data cache
-					img = self.wsi.read_region(coord, patch_level, (patch_size, patch_size)).convert('RGB')
+					img = wsi.read_region(coord, patch_level, (patch_size, patch_size)).convert('RGB')
 					idx = self._add_to_cache(img, file_path)
 				
-				# type is derived from the name of the dataset; we expect the dataset
-				# name to have a name such as 'data' or 'label' to identify its type
-				# we also store the shape of the data in case we need it
-				self.data_info.append({'file_path': file_path, 'type' 'cache_idx': idx, 'coords': coord, 'patch_level': patch_level, 'patch_size': patch_size})
+				# add information to data_info
+				self.data_info.append({'file_path': file_path, 'type', 'cache_idx': idx, 'coords': coord, 'patch_level': patch_level, 'patch_size': patch_size})
 
     def _load_data(self, file_path):
         """Load data to the cache given the file
@@ -242,17 +240,22 @@ class HDF5Dataset(data.Dataset):
         data_info structure.
         """
         with h5py.File(file_path) as h5_file:
-            for gname, group in h5_file.items():
-                for dname, ds in group.items():
-                    # add data to the data cache and retrieve
-                    # the cache index
-                    idx = self._add_to_cache(ds.value, file_path)
+            # get metadata for WSI
+			dset = h5_file['coords']
+			wsi = openslide.open_slide(slide_file_path) # ??
 
-                    # find the beginning index of the hdf5 file we are looking for
-                    file_idx = next(i for i,v in enumerate(self.data_info) if v['file_path'] == file_path)
+			# iterate over coordinates of all patches in WSI
+			for patch_idx in range(dset.len()):
+				coord = dset[patch_idx]
+				# add data to the data cache
+				img = wsi.read_region(coord, patch_level, (patch_size, patch_size)).convert('RGB')
+				idx = self._add_to_cache(img, file_path)
 
-                    # the data info should have the same index since we loaded it in the same way
-                    self.data_info[file_idx + idx]['cache_idx'] = idx
+				# find the beginning index of the hdf5 file we are looking for
+				file_idx = next(i for i,v in enumerate(self.data_info) if v['file_path'] == file_path)
+
+				# the data info should have the same index since we loaded it in the same way
+				self.data_info[file_idx + idx]['cache_idx'] = idx
 
         # remove an element from data cache if size was exceeded
         if len(self.data_cache) > self.data_cache_size:
@@ -261,7 +264,7 @@ class HDF5Dataset(data.Dataset):
             removal_keys.remove(file_path)
             self.data_cache.pop(removal_keys[0])
             # remove invalid cache_idx
-            self.data_info = [{'file_path': di['file_path'], 'type': di['type'], 'shape': di['shape'], 'cache_idx': -1} if di['file_path'] == removal_keys[0] else di for di in self.data_info]
+            self.data_info = [{'file_path': di['file_path'], 'type': di['type'], 'coords': di['coords'], 'cache_idx': -1, 'patch_level': di['patch_level'], 'patch_size': di['patch_size']} if di['file_path'] == removal_keys[0] else di for di in self.data_info]
 
     def _add_to_cache(self, data, file_path):
         """Adds data to the cache and returns its index. There is one cache
