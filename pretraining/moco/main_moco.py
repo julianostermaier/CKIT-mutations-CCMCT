@@ -25,6 +25,8 @@ import torchvision.models as models
 import moco.loader
 import moco.builder
 
+from ... import HDF5Dataset
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -244,9 +246,13 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize
         ]
 
-    train_dataset = datasets.ImageFolder(
+    # use custom hdf5 dataset to load the segmented WSI's from the folder
+    train_dataset = HDF5Dataset(
         traindir,
-        moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
+        recursive=True,
+        load_data=False,
+        data_cache_size=3,
+        transform=moco.loader.TwoCropsTransform(transforms.Compose(augmentation)))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
