@@ -89,6 +89,11 @@ parser.add_argument('--cos', action='store_true',
 
 def main():
     args = parser.parse_args()
+
+    # save args to file for reproducibility
+    with open('results/experiment_args.txt', 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if args.seed is not None:
@@ -190,7 +195,7 @@ def main_worker(args, device):
             'arch': args.arch,
             'state_dict': model.state_dict(),
             'optimizer' : optimizer.state_dict(),
-        }, is_best=False, filename='checkpoint_{:04d}.pth.tar'.format(epoch))
+        }, is_best=False, filename='results/checkpoint_{:04d}.pth.tar'.format(epoch))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
