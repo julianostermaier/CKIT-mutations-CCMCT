@@ -178,7 +178,7 @@ class HDF5Dataset(Dataset):
         recursive: If True, searches for h5 files in subdirectories.
         transform: PyTorch transform to apply to every data instance (default=None).
     """
-    def __init__(self, file_path, wsi_path, recursive, load_data, data_cache_size=3, transform=None):
+    def __init__(self, file_path, wsi_path, recursive, transform=None):
         super().__init__()
         self.data_info = []
         self.transform = transform
@@ -198,7 +198,7 @@ class HDF5Dataset(Dataset):
             raise RuntimeError('No hdf5 datasets found')
             
         self.wsi_files = [str(f.resolve()) for f in wsis]
-                          
+
         for i, h5dataset_fp in enumerate(files):
             self._add_data_infos(str(h5dataset_fp.resolve()), i)
             
@@ -212,6 +212,7 @@ class HDF5Dataset(Dataset):
         return len(self.data_info)
     
     def _add_data_infos(self, file_path, i):
+		
         with h5py.File(file_path, "r") as h5_file:
             # get metadata for WSI
             patch_level = h5_file['coords'].attrs['patch_level']
