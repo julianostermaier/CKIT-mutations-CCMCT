@@ -172,6 +172,7 @@ def main_worker(args, device):
     train_dataset = HDF5Dataset(
         args.train_dir,
         args.wsi_dir,
+        csv_path='dataset_csv/ckit_data_pretraining.csv',
         recursive=True,
         transform=TwoCropsTransform(transforms.Compose(augmentation)))
 
