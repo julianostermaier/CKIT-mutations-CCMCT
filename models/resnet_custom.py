@@ -107,18 +107,23 @@ class ResNet_Baseline(nn.Module):
 
         return x
 
-def resnet50_baseline(pretrained=False):
+def resnet50_baseline(pretrained=False, model_path='resnet50'):
     """Constructs a Modified ResNet-50 model.
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a pretrained model
+        model_path: path to the model parameters. If this is a custom pretrained model, the path will be the location of the pth.tar file
     """
     model = ResNet_Baseline(Bottleneck_Baseline, [3, 4, 6, 3])
     if pretrained:
-        model = load_pretrained_weights(model, 'resnet50')
+        model = load_pretrained_weights(model, model_path)
     return model
 
 def load_pretrained_weights(model, name):
-    pretrained_dict = model_zoo.load_url(model_urls[name])
+    if name in model_urls.items():
+        pretrained_dict = model_zoo.load_url(model_urls[name])
+    else:
+        pretrained_dict = torch.load(name, map_location="cpu")
+        pretrained_dict = pretrained_dict["state_dict"]
     model.load_state_dict(pretrained_dict, strict=False)
     return model
 

@@ -64,6 +64,7 @@ parser.add_argument('--slide_ext', type=str, default= '.svs')
 parser.add_argument('--csv_path', type=str, default=None)
 parser.add_argument('--feat_dir', type=str, default=None)
 parser.add_argument('--batch_size', type=int, default=256)
+parser.add_argument('--model_path', type=str, default=None)
 parser.add_argument('--no_auto_skip', default=False, action='store_true')
 parser.add_argument('--custom_downsample', type=int, default=1)
 parser.add_argument('--target_patch_size', type=int, default=-1)
@@ -85,7 +86,10 @@ if __name__ == '__main__':
 	dest_files = os.listdir(os.path.join(args.feat_dir, 'pt_files'))
 
 	print('loading model checkpoint')
-	model = resnet50_baseline(pretrained=True)
+	if args.model_path != None:
+		model = resnet50_baseline(pretrained=True, model_path=args.model_path)
+	else:
+		model = resnet50_baseline(pretrained=True)
 	model = model.to(device)
 	
 	# print_network(model)
