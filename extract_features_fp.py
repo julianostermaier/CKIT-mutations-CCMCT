@@ -18,8 +18,8 @@ import openslide
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 def compute_w_loader(file_path, output_path, wsi, model,
- 	batch_size = 8, verbose = 0, print_every=20, pretrained=True, 
-	custom_downsample=1, target_patch_size=-1):
+ 	batch_size = 8, verbose = 0, print_every=20, pretrained='ImageNet', 
+	custom_downsample=1, target_patch_size=-1, custom_transforms):
 	"""
 	args:
 		file_path: directory of bag (.h5 file)
@@ -32,7 +32,8 @@ def compute_w_loader(file_path, output_path, wsi, model,
 		target_patch_size: custom defined, rescaled image size before embedding
 	"""
 	dataset = Whole_Slide_Bag_FP(file_path=file_path, wsi=wsi, pretrained=pretrained, 
-		custom_downsample=custom_downsample, target_patch_size=target_patch_size)
+		custom_downsample=custom_downsample, target_patch_size=target_patch_size, 
+		custom_transforms=custom_transforms, pretrained=pretrained)
 	x, y = dataset[0]
 	kwargs = {'num_workers': 4, 'pin_memory': True} if device.type == "cuda" else {}
 	loader = DataLoader(dataset=dataset, batch_size=batch_size, **kwargs, collate_fn=collate_features)
@@ -68,6 +69,7 @@ parser.add_argument('--model_path', type=str, default=None)
 parser.add_argument('--no_auto_skip', default=False, action='store_true')
 parser.add_argument('--custom_downsample', type=int, default=1)
 parser.add_argument('--target_patch_size', type=int, default=-1)
+parser.add_argument('--pretrained', type=str, default='ImageNet')
 args = parser.parse_args()
 
 
@@ -116,7 +118,8 @@ if __name__ == '__main__':
 		wsi = openslide.open_slide(slide_file_path)
 		output_file_path = compute_w_loader(h5_file_path, output_path, wsi, 
 		model = model, batch_size = args.batch_size, verbose = 1, print_every = 20, 
-		custom_downsample=args.custom_downsample, target_patch_size=args.target_patch_size)
+		custom_downsample=args.custom_downsample, target_patch_size=args.target_patch_size,
+		pretrained=args.pretrained)
 		time_elapsed = time.time() - time_start
 		print('\ncomputing features for {} took {} s'.format(output_file_path, time_elapsed))
 		file = h5py.File(output_file_path, "r")

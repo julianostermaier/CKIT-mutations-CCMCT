@@ -36,18 +36,13 @@ parser.add_argument('--train_dir', type=str,
                     help='path to dataset')
 parser.add_argument('--wsi_dir', type=str,
                     help='path to wsis')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
-                    choices=model_names,
-                    help='model architecture: ' +
-                        ' | '.join(model_names) +
-                        ' (default: resnet50)')
 parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
                     help='number of data loading workers (default: 32)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=64, type=int,
+parser.add_argument('-b', '--batch-size', default=128, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256)')
 parser.add_argument('--lr', '--learning-rate', default=0.012, type=float,
@@ -63,6 +58,8 @@ parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
+parser.add_argument('--num_samples', default=100000, type=int,
+                    help='number of samples to be used in each epoch. ')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 
@@ -112,9 +109,8 @@ def main():
 def main_worker(args, device):
 
     # create model
-    print("=> creating model '{}'".format(args.arch))
     model = MoCo(
-        models.__dict__[args.arch],
+        models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
         args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
     print(model)
 
@@ -142,8 +138,8 @@ def main_worker(args, device):
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     # Data loading code
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.7785, 0.6139, 0.7132],
+                                     std=[0.1942, 0.2412, 0.1882])
     if args.aug_plus:
         # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
         augmentation = [
@@ -177,15 +173,23 @@ def main_worker(args, device):
         transform=TwoCropsTransform(transforms.Compose(augmentation)))
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=True,
-        num_workers=args.workers, pin_memory=True, drop_last=True)
+        train_dataset, batch_size=args.batch_size,
+        num_workers=args.workers, pin_memory=True, drop_last=True
+        sampler=torch.utils.data.RandomSampler(train_dataset, num_samples=args.num_samples))
+
+    prev_loss = 0
 
     for epoch in range(args.start_epoch, args.epochs):
         
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, device, args)
+        curr_loss = train(train_loader, model, criterion, optimizer, epoch, device, args)
+
+        delta_curr = 1 - (curr_loss / prev_loss + 0.00001)
+
+        if epoch > 1 and delta_curr < 0.01:
+            print('End script at epoch {}. Reached delta at {}'.format(epoch, delta_curr))
 
         save_checkpoint({
             'epoch': epoch + 1,
@@ -206,6 +210,9 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
         [batch_time, data_time, losses, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
 
+    # return mean loss after epoch
+    mean_loss = 0
+
     # switch to train mode
     model.train()
 
@@ -220,6 +227,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
         # compute output
         output, target = model(im_q=images[0], im_k=images[1])
         loss = criterion(output, target)
+        mean_loss += loss.item()
 
         # acc1/acc5 are (K+1)-way contrast classifier accuracy
         # measure accuracy and record loss
@@ -239,6 +247,8 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
 
         if i % args.print_freq == 0:
             progress.display(i)
+
+    return mean_loss / len(train_loader)
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
