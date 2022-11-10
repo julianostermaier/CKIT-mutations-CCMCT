@@ -10,6 +10,7 @@ import pickle
 import helpers
 import openslide
 import glob
+import random
 
 from torch.utils.data import Dataset, DataLoader, sampler
 from torchvision import transforms, utils, models
@@ -21,11 +22,13 @@ import h5py
 from random import randrange
 from pathlib import Path
 
-def eval_transforms(pretrained=False):
-    if pretrained:
+def eval_transforms(pretrained='ImageNet'):
+    if pretrained == 'ImageNet':
         mean = (0.485, 0.456, 0.406)
         std = (0.229, 0.224, 0.225)
-
+    elif pretrained == 'MoCo':
+        mean = (0.7785, 0.6139, 0.7132)
+        std = (0.1942, 0.2412, 0.1882)
     else:
         mean = (0.5,0.5,0.5)
         std = (0.5,0.5,0.5)
@@ -42,7 +45,7 @@ def eval_transforms(pretrained=False):
 class Whole_Slide_Bag(Dataset):
     def __init__(self,
         file_path,
-        pretrained=False,
+        pretrained='ImageNet',
         custom_transforms=None,
         target_patch_size=-1,
         ):
@@ -226,7 +229,7 @@ class HDF5Dataset(Dataset):
             patch_size = h5_file['coords'].attrs['patch_size']
 
             # iterate over coordinates of all patches in WSI
-            print(h5_file['coords'].len())
+            print('WSI number of patches : {}'.format(h5_file['coords'].len()))
             for patch_idx in range(h5_file['coords'].len()):
                 coord = h5_file['coords'][patch_idx]
                 
