@@ -28,6 +28,7 @@ parser = argparse.ArgumentParser(description='Heatmap inference script')
 parser.add_argument('--save_exp_code', type=str, default=None,
 					help='experiment code')
 parser.add_argument('--overlap', type=float, default=None)
+parser.add_argument('--model_path', type=str, default=None)
 parser.add_argument('--config_file', type=str, default="heatmap_config_template.yaml")
 args = parser.parse_args()
 
@@ -167,7 +168,7 @@ if __name__ == '__main__':
 		raise NotImplementedError
 
 
-	feature_extractor = resnet50_baseline(pretrained=True)
+	feature_extractor = resnet50_baseline(pretrained=True, model_path='pretraining/moco/results/checkpoint_0001.pth.tar')
 	feature_extractor.eval()
 	device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	print('Done!')

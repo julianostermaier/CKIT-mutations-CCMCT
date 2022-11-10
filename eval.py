@@ -41,7 +41,7 @@ parser.add_argument('--fold', type=int, default=-1, help='single fold to evaluat
 parser.add_argument('--micro_average', action='store_true', default=False, 
                     help='use micro_average instead of macro_avearge for multiclass AUC')
 parser.add_argument('--split', type=str, choices=['train', 'val', 'test', 'all'], default='test')
-parser.add_argument('--task', type=str, choices=['c-kit-mutation', 'task_1_tumor_vs_normal',  'task_2_tumor_subtyping'])
+parser.add_argument('--task', type=str, choices=['c-kit-mutation', 'task_1_tumor_vs_normal',  'task_2_tumor_subtyping', 'c-kit-mutation-moco'])
 args = parser.parse_args()
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -99,6 +99,16 @@ elif args.task == 'c-kit-mutation':
                             label_dict = {'POSITIVE': 1, 'NEGATIVE': 0},
                             patient_strat= False,
                             ignore=[])  
+    
+elif args.task == 'c-kit-mutation-moco':
+    args.n_classes=2
+    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/ckit_data.csv',
+                            data_dir= args.data_root_dir,
+                            shuffle = False, 
+                            print_info = True,
+                            label_dict = {'POSITIVE': 1, 'NEGATIVE': 0},
+                            patient_strat= False,
+                            ignore=[]) 
 
 # elif args.task == 'tcga_kidney_cv':
 #     args.n_classes=3
