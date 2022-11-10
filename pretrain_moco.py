@@ -22,6 +22,7 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
+from torchvision.models import ResNet50_Weights
 
 from pretraining.moco.loader import TwoCropsTransform, GaussianBlur
 from pretraining.moco.builder import MoCo
@@ -32,6 +33,11 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
+                    choices=model_names,
+                    help='model architecture: ' +
+                        ' | '.join(model_names) +
+                        ' (default: resnet50)')
 parser.add_argument('--train_dir', type=str,
                     help='path to dataset')
 parser.add_argument('--wsi_dir', type=str,
@@ -58,7 +64,7 @@ parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-parser.add_argument('--num_samples', default=100000, type=int,
+parser.add_argument('--num_samples', default=1000, type=int,
                     help='number of samples to be used in each epoch. ')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
@@ -110,8 +116,9 @@ def main_worker(args, device):
 
     # create model
     model = MoCo(
-        models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2),
-        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp)
+        models.__dict__[args.arch],
+        args.moco_dim, args.moco_k, args.moco_m, args.moco_t, args.mlp,
+        weights=ResNet50_Weights.IMAGENET1K_V2)
     print(model)
 
     # move model to gpu
@@ -174,7 +181,7 @@ def main_worker(args, device):
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size,
-        num_workers=args.workers, pin_memory=True, drop_last=True
+        num_workers=args.workers, pin_memory=True, drop_last=True,
         sampler=torch.utils.data.RandomSampler(train_dataset, num_samples=args.num_samples))
 
     prev_loss = 0
@@ -186,10 +193,13 @@ def main_worker(args, device):
         # train for one epoch
         curr_loss = train(train_loader, model, criterion, optimizer, epoch, device, args)
 
-        delta_curr = 1 - (curr_loss / prev_loss + 0.00001)
-
+        delta_curr = 1 - (curr_loss / (prev_loss + 0.00001))
+        print('Current epoch {}, delta at {}'.format(epoch, delta_curr))
         if epoch > 1 and delta_curr < 0.01:
             print('End script at epoch {}. Reached delta at {}'.format(epoch, delta_curr))
+            break
+
+        prev_loss = curr_loss
 
         save_checkpoint({
             'epoch': epoch + 1,

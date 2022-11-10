@@ -4,6 +4,8 @@ import torch.utils.model_zoo as model_zoo
 import torch
 import torch.nn.functional as F
 
+from collections import OrderedDict
+
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
 
@@ -124,6 +126,16 @@ def load_pretrained_weights(model, name):
     else:
         pretrained_dict = torch.load(name, map_location="cpu")
         pretrained_dict = pretrained_dict["state_dict"]
+        # quick fix: edit keys for layer in state dict
+        # to be removed
+        new_state_dict = OrderedDict()
+        for k, v in pretrained_dict.items():
+            if k[:10] == 'encoder_q.':
+                name = k[10:]
+                print(name)
+            new_state_dict[name] = v
+        pretrained_dict = new_state_dict
+            
     model.load_state_dict(pretrained_dict, strict=False)
     return model
 
