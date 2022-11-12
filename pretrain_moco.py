@@ -64,7 +64,7 @@ parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-parser.add_argument('--num_samples', default=1000, type=int,
+parser.add_argument('--num_samples', default=500000, type=int,
                     help='number of samples to be used in each epoch. ')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
@@ -72,7 +72,7 @@ parser.add_argument('--seed', default=None, type=int,
 # moco specific configs:
 parser.add_argument('--moco-dim', default=128, type=int,
                     help='feature dimension (default: 128)')
-parser.add_argument('--moco-k', default=128, type=int,
+parser.add_argument('--moco-k', default=256, type=int,
                     help='queue size; number of negative keys (default: 65536)')
 parser.add_argument('--moco-m', default=0.999, type=float,
                     help='moco momentum of updating key encoder (default: 0.999)')
@@ -195,7 +195,7 @@ def main_worker(args, device):
 
         delta_curr = 1 - (curr_loss / (prev_loss + 0.00001))
         print('Current epoch {}, delta at {}'.format(epoch, delta_curr))
-        if epoch > 1 and delta_curr < 0.01:
+        if epoch > 1 and 0 < delta_curr < 0.0005:
             print('End script at epoch {}. Reached delta at {}'.format(epoch, delta_curr))
             break
 
