@@ -103,7 +103,7 @@ class Whole_Slide_Bag_FP(Dataset):
     def __init__(self,
         file_path,
         wsi,
-        pretrained=False,
+        pretrained='ImageNet',
         custom_transforms=None,
         custom_downsample=1,
         target_patch_size=-1
