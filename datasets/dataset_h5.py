@@ -111,7 +111,7 @@ class Whole_Slide_Bag_FP(Dataset):
         """
         Args:
             file_path (string): Path to the .h5 file containing patched data.
-            pretrained (bool): Use ImageNet transforms
+            pretrained (bool): Use ImageNet transforms or MoCo transforms
             custom_transforms (callable, optional): Optional transform to be applied on a sample
             custom_downsample (int): Custom defined downscale factor (overruled by target_patch_size)
             target_patch_size (int): Custom defined image size before embedding
@@ -179,13 +179,16 @@ class HDF5Dataset(Dataset):
     
     Input params:
         file_path: Path to the folder containing the dataset (one or multiple HDF5 files).
+        wsi_path: Path to WSI's.
         recursive: If True, searches for h5 files in subdirectories.
+        csv_path: if defined, only slides specified in the csv_file will be used in dataset (useful for train/test split).
         transform: PyTorch transform to apply to every data instance (default=None).
     """
-    def __init__(self, file_path, wsi_path, recursive, csv_path=None, transform=None):
+    def __init__(self, file_path, wsi_path, recursive, csv_path=None, transform=None, mag_prior=False):
         super().__init__()
 
         self.data_info = []
+        self.mag_prior = mag_prior
         self.transform = transform
 
         # Search for all h5 and svs files
@@ -213,8 +216,20 @@ class HDF5Dataset(Dataset):
             self._add_data_infos(str(h5dataset_fp), i)
             
     def __getitem__(self, index):
-        # get coords of patch
-        x = self.get_data(index)
+        # magnification dict maps magnifications as ordered pairs
+        mag_dict = {
+            '0': 1,
+            '1': 2,
+            '2': 1
+        }
+        if self.mag_prior == True:
+
+            mag_1 = randrange(3)
+            mag_0 = mag_dict[str(mag_1)]
+
+            x = self.get_data(index)
+        else:
+            x = self.get_data(index)
 
         return self.transform(x)
 
@@ -252,12 +267,14 @@ class HDF5Dataset(Dataset):
             
         return wsi_match[0] if len(wsi_match)>0 else None
 
-    def get_data(self, i):
+    def get_data(self, i, patch_coords=None, patch_level=None):
         """Call this function anytime you want to access a chunk of data
         """
         patch = self.data_info[i]
         
         wsi = openslide.open_slide(patch['wsi_path'])
+        #patch_coords = if patch_coords != None patch_coords else patch['coords']
+        #patch_level = if patch_level != None patch_coords else patch['patch_level']
         img = wsi.read_region(patch['coords'], patch['patch_level'], (patch['patch_size'], patch['patch_size'])).convert('RGB')
 
         return img
