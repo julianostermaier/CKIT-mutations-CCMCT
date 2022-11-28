@@ -24,7 +24,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 from torchvision.models import ResNet50_Weights
 
-from pretraining.moco.loader import TwoCropsTransform, GaussianBlur
+from pretraining.moco.loader import TwoCropsTransform, TwoCropsTransformMagprior, GaussianBlur
 from pretraining.moco.builder import MoCo
 from datasets.dataset_h5 import HDF5Dataset
 
@@ -40,6 +40,8 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                         ' (default: resnet50)')
 parser.add_argument('--train_dir', type=str,
                     help='path to dataset')
+parser.add_argument('--result_dir', type=str,
+                    help='path to results')
 parser.add_argument('--wsi_dir', type=str,
                     help='path to wsis')
 parser.add_argument('-j', '--workers', default=32, type=int, metavar='N',
@@ -48,10 +50,10 @@ parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=128, type=int,
+parser.add_argument('-b', '--batch-size', default=32, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256)')
-parser.add_argument('--lr', '--learning-rate', default=0.012, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--schedule', default=[120, 160], nargs='*', type=int,
                     help='learning rate schedule (when to drop lr by 10x)')
@@ -82,8 +84,8 @@ parser.add_argument('--moco-t', default=0.07, type=float,
 # options for moco v2
 parser.add_argument('--mlp', action='store_true',
                     help='use mlp head')
-parser.add_argument('--aug-plus', action='store_true',
-                    help='use moco v2 data augmentation')
+parser.add_argument('--mag_prior', default=False,
+                    help='use magnification prior augmentation')
 parser.add_argument('--cos', action='store_true',
                     help='use cosine lr schedule')
 
@@ -92,7 +94,7 @@ def main():
     args = parser.parse_args()
 
     # save args to file for reproducibility
-    with open('pretraining/moco/results/experiment_args.txt', 'w') as f:
+    with open('pretraining/moco/results/{}/experiment_args.txt'.format(args.result_dir), 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -147,19 +149,19 @@ def main_worker(args, device):
     # Data loading code
     normalize = transforms.Normalize(mean=[0.7785, 0.6139, 0.7132],
                                      std=[0.1942, 0.2412, 0.1882])
-    if args.aug_plus:
-        # MoCo v2's aug: similar to SimCLR https://arxiv.org/abs/2002.05709
+    print(args.mag_prior)
+    if args.mag_prior:
         augmentation = [
             transforms.RandomResizedCrop(224, scale=(0.2, 1.)),
             transforms.RandomApply([
-                transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)  # not strengthened
-            ], p=0.8),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.RandomApply([GaussianBlur([.1, 2.])], p=0.5),
-            transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(0.1, 0.1, 0.1, 0.1)  # not strengthened
+            ], p=0.3),
+            transforms.RandomHorizontalFlip(p=0.3),
+            transforms.RandomVerticalFlip(p=0.3),
             transforms.ToTensor(),
             normalize
         ]
+        transf = TwoCropsTransformMagprior(transforms.Compose(augmentation))
     else:
         # MoCo v1's aug: the same as InstDisc https://arxiv.org/abs/1805.01978
         augmentation = [
@@ -170,6 +172,7 @@ def main_worker(args, device):
             transforms.ToTensor(),
             normalize
         ]
+        transf = TwoCropsTransform(transforms.Compose(augmentation))
 
     # use custom hdf5 dataset to load the segmented WSI's from the folder
     train_dataset = HDF5Dataset(
@@ -177,7 +180,8 @@ def main_worker(args, device):
         args.wsi_dir,
         csv_path='dataset_csv/ckit_data_pretraining.csv',
         recursive=True,
-        transform=TwoCropsTransform(transforms.Compose(augmentation)))
+        mag_prior=args.mag_prior,
+        transform=transf)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size,
@@ -206,7 +210,7 @@ def main_worker(args, device):
             'arch': args.arch,
             'state_dict': model.state_dict(),
             'optimizer' : optimizer.state_dict(),
-        }, is_best=False, filename='pretraining/moco/results/checkpoint_{:04d}.pth.tar'.format(epoch))
+        }, is_best=False, filename='pretraining/moco/results/{}/checkpoint_{:04d}.pth.tar'.format(args.result_dir, epoch))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
@@ -233,7 +237,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
 
         images[0] = images[0].cuda(device=device, non_blocking=True)
         images[1] = images[1].cuda(device=device, non_blocking=True)
-
+        
         # compute output
         output, target = model(im_q=images[0], im_k=images[1])
         loss = criterion(output, target)

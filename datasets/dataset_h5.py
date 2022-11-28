@@ -190,6 +190,7 @@ class HDF5Dataset(Dataset):
         self.data_info = []
         self.mag_prior = mag_prior
         self.transform = transform
+        print(self.mag_prior)
 
         # Search for all h5 and svs files
         w = Path(wsi_path)
@@ -216,22 +217,15 @@ class HDF5Dataset(Dataset):
             self._add_data_infos(str(h5dataset_fp), i)
             
     def __getitem__(self, index):
-        # magnification dict maps magnifications as ordered pairs
-        mag_dict = {
-            '0': 1,
-            '1': 2,
-            '2': 1
-        }
-        if self.mag_prior == True:
-
-            mag_1 = randrange(3)
-            mag_0 = mag_dict[str(mag_1)]
-
-            x = self.get_data(index)
+        
+        if self.mag_prior:
+            x_1, x_2 = self.get_data_mag(index)
+            x = self.transform(x_1, x_2)
         else:
             x = self.get_data(index)
-
-        return self.transform(x)
+            x = self.transform(x)
+            
+        return x
 
     def __len__(self):
         return len(self.data_info)
@@ -273,10 +267,40 @@ class HDF5Dataset(Dataset):
         patch = self.data_info[i]
         
         wsi = openslide.open_slide(patch['wsi_path'])
-        #patch_coords = if patch_coords != None patch_coords else patch['coords']
-        #patch_level = if patch_level != None patch_coords else patch['patch_level']
         img = wsi.read_region(patch['coords'], patch['patch_level'], (patch['patch_size'], patch['patch_size'])).convert('RGB')
 
         return img
 
+    def get_data_mag(self, i):
+        """Call this function anytime you want to access a chunk of data
+        """
+        
+        level_downsamples = {
+            '0': 1,
+            '1': 4,
+            '2': 16,
+            '3': 32
+        }
+
+        mag_1 = randrange(3)
+        mag_2 = mag_1 + 1
+
+        patch = self.data_info[i]
+        
+        wsi = openslide.open_slide(patch['wsi_path'])
+
+        # get first image with lower resolution
+        img_2 = wsi.read_region(patch['coords'], mag_2, (patch['patch_size'], patch['patch_size'])).convert('RGB')
+
+        # sample coordinate inside image with lower resolution
+        x = patch['coords'][0] + (patch['patch_size'] * level_downsamples[str(mag_2)])
+        y = patch['coords'][1] + (patch['patch_size'] * level_downsamples[str(mag_2)])
+
+        x_rand = random.randrange(patch['coords'][0], x - patch['patch_size'])
+        y_rand = random.randrange(patch['coords'][1], y - patch['patch_size'])
+
+        # get second image with higher resolution, mag_1
+        img_1 = wsi.read_region((x_rand, y_rand), mag_1, (patch['patch_size'], patch['patch_size'])).convert('RGB')
+
+        return img_1, img_2
 
