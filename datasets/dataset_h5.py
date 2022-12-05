@@ -173,6 +173,17 @@ class Dataset_All_Bags(Dataset):
     def __getitem__(self, idx):
         return self.df['slide_id'][idx]
 
+class Dataset_All_Bags_label(Dataset):
+
+    def __init__(self, csv_path):
+        self.df = pd.read_csv(csv_path)
+    
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        return self.df['slide_id'][idx], self.df['label'][idx]
+
 
 class HDF5Dataset(Dataset):
     """Represents an abstract HDF5 dataset.

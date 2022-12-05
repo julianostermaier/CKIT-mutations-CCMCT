@@ -38,6 +38,13 @@ def collate_MIL(batch):
 	label = torch.LongTensor([item[1] for item in batch])
 	return [img, label]
 
+def collate_MIL_coords(batch):
+	img = torch.cat([item[0] for item in batch], dim = 0)
+	label = torch.LongTensor([item[1] for item in batch])
+	coords = np.vstack([item[2] for item in batch])
+	slide_id = [item[3] for item in batch]
+	return [img, label, coords, slide_id]
+
 def collate_features(batch):
 	img = torch.cat([item[0] for item in batch], dim = 0)
 	coords = np.vstack([item[1] for item in batch])

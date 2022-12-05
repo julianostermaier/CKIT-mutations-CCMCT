@@ -1,5 +1,7 @@
 import numpy as np
 
+import openslide
+import glob
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -8,13 +10,16 @@ from models.model_clam import CLAM_SB, CLAM_MB
 import pdb
 import os
 import pandas as pd
+from torch.utils.data import DataLoader
 from utils.utils import *
 from utils.core_utils import Accuracy_Logger
 from sklearn.metrics import roc_auc_score, roc_curve, auc
 from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
+from PIL import Image
 
 def initiate_model(args, ckpt_path):
+    print(args.drop_out)
     print('Init Model')    
     model_dict = {"dropout": args.drop_out, 'n_classes': args.n_classes}
     
@@ -54,6 +59,45 @@ def eval(dataset, args, ckpt_path):
     print('test_error: ', test_error)
     print('auc: ', auc)
     return model, patient_results, test_error, auc, df
+
+def high_attention_patches(dataset, args, ckpt_path, data_dir, results_dir, k=20):
+        model = initiate_model(args, ckpt_path)
+    
+        print('Init Loaders')
+        kwargs = {'num_workers': 4, 'pin_memory': False} if device.type == "cuda" else {}
+        loader = DataLoader(dataset, batch_size=1, collate_fn=collate_MIL_coords, **kwargs)
+
+        for batch_idx, (features, label, coords, slide_id) in enumerate(loader):
+            features, label = features.to(device), label.to(device)
+            slide_id = slide_id[0]
+
+            with torch.no_grad():
+                ## get features and coordinates
+                _, _, Y_hat, A, _ = model(features)
+
+                # only save patch if WSI prediction is true
+                if label == Y_hat:
+                    A = F.softmax(A, dim=1)  # softmax over N
+                    A = A.view(-1, 1).cpu()
+                    att_values, indices = torch.topk(A, k, dim=0)
+
+                    top_coords = coords[indices]
+                    save_image(slide_id, top_coords, label, data_dir, results_dir)
+
+def save_image(slide_id, top_coords, label, data_dir, results_dir):
+    slide_path = glob.glob('{}/**/{}.svs'.format(data_dir, slide_id), recursive=True)[0]
+    wsi = openslide.open_slide(slide_path)
+
+    # create results dir
+    label = int(label.cpu())
+    path = os.path.join(results_dir + '/' + str(label))
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+
+    for coords in top_coords:
+        coords = coords[0]
+        img = wsi.read_region((coords[0], coords[1]), 0, (256,256)).convert('RGB')
+        img.save(path + '/{}-{}-{}.png'.format(slide_id,coords[0], coords[1]))
 
 def summary(model, loader, args):
     acc_logger = Accuracy_Logger(n_classes=args.n_classes)
