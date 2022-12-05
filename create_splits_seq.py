@@ -12,7 +12,7 @@ parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
 parser.add_argument('--k', type=int, default=10,
                     help='number of splits (default: 10)')
-parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal', 'c-kit-mutation-all-val', 'task_2_tumor_subtyping'])
+parser.add_argument('--task', type=str, choices=['task_1_tumor_vs_normal', 'c-kit-mutation-all-val', 'task_2_tumor_subtyping', 'c-kit-8_11-mutation-all-val'])
 parser.add_argument('--val_frac', type=float, default= 0.1,
                     help='fraction of labels for validation (default: 0.1)')
 parser.add_argument('--test_frac', type=float, default= 0.1,
@@ -41,6 +41,18 @@ elif args.task == 'c-kit-mutation-all-val':
                             patient_strat=False,
                             ignore=[],
                             all_validated=args.all_validated)
+
+elif args.task == 'c-kit-8_11-mutation-all-val':
+    args.n_classes=3
+    dataset = Generic_WSI_Classification_Dataset(csv_path = 'dataset_csv/ckit_8-11_data.csv',
+                            shuffle = False, 
+                            seed = args.seed, 
+                            print_info = True,
+                            label_dict = {'NEGATIVE':0, 'KIT-8':1, 'KIT-11':2},
+                            patient_strat=False,
+                            ignore=[],
+                            all_validated=args.all_validated)
+
 elif args.task == 'task_2_tumor_subtyping':
     args.n_classes=3
     dataset = Generic_WSI_Classification_Dataset(csv_path = 'dataset_csv/tumor_subtyping_dummy_clean.csv',

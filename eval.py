@@ -11,7 +11,7 @@ import pandas as pd
 from utils.utils import *
 from math import floor
 import matplotlib.pyplot as plt
-from datasets.dataset_generic import Generic_WSI_Classification_Dataset, Generic_MIL_Dataset, save_splits
+from datasets.dataset_generic import Generic_WSI_Classification_Dataset, Generic_Features_Dataset, Generic_MIL_Dataset, save_splits
 import h5py
 from utils.eval_utils import *
 
@@ -34,6 +34,8 @@ parser.add_argument('--model_type', type=str, choices=['clam_sb', 'clam_mb', 'mi
                     help='type of model (default: clam_sb)')
 parser.add_argument('--drop_out', action='store_true', default=False, 
                     help='whether model uses dropout')
+parser.add_argument('--high_att_patches', action='store_true', default=False, 
+                    help='whether to store high attention patches')
 parser.add_argument('--k', type=int, default=10, help='number of folds (default: 10)')
 parser.add_argument('--k_start', type=int, default=-1, help='start fold (default: -1, last fold)')
 parser.add_argument('--k_end', type=int, default=-1, help='end fold (default: -1, first fold)')
@@ -41,7 +43,7 @@ parser.add_argument('--fold', type=int, default=-1, help='single fold to evaluat
 parser.add_argument('--micro_average', action='store_true', default=False, 
                     help='use micro_average instead of macro_avearge for multiclass AUC')
 parser.add_argument('--split', type=str, choices=['train', 'val', 'test', 'all'], default='test')
-parser.add_argument('--task', type=str, choices=['c-kit-mutation', 'task_1_tumor_vs_normal',  'task_2_tumor_subtyping', 'c-kit-mutation-moco'])
+parser.add_argument('--task', type=str, choices=['c-kit-mutation', 'c-kit-8_11-mutation',  'task_2_tumor_subtyping', 'c-kit-mutation-moco'])
 args = parser.parse_args()
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -94,11 +96,20 @@ elif args.task == 'c-kit-mutation':
     args.n_classes=2
     dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/ckit_data.csv',
                             data_dir= args.data_root_dir,
-                            shuffle = False, 
+                            shuffle = False,
                             print_info = True,
                             label_dict = {'POSITIVE': 1, 'NEGATIVE': 0},
                             patient_strat= False,
                             ignore=[])  
+elif args.task == 'c-kit-8_11-mutation':
+    args.n_classes=3
+    dataset = Generic_MIL_Dataset(csv_path = 'dataset_csv/ckit_8-11_data.csv',
+                            data_dir= args.data_root_dir,
+                            shuffle = False, 
+                            print_info = True,
+                            label_dict = {'NEGATIVE':0, 'KIT-8':1, 'KIT-11':2},
+                            patient_strat= False,
+                            ignore=[]) 
     
 elif args.task == 'c-kit-mutation-moco':
     args.n_classes=2
@@ -150,15 +161,15 @@ if __name__ == "__main__":
             csv_path = '{}/splits_{}.csv'.format(args.splits_dir, folds[ckpt_idx])
             datasets = dataset.return_splits(from_id=False, csv_path=csv_path)
             split_dataset = datasets[datasets_id[args.split]]
-        model, patient_results, test_error, auc, df  = eval(split_dataset, args, ckpt_paths[ckpt_idx])
-        all_results.append(all_results)
-        all_auc.append(auc)
-        all_acc.append(1-test_error)
-        df.to_csv(os.path.join(args.save_dir, 'fold_{}.csv'.format(folds[ckpt_idx])), index=False)
+            model, patient_results, test_error, auc, df  = eval(split_dataset, args, ckpt_paths[ckpt_idx])
+            all_results.append(all_results)
+            all_auc.append(auc)
+            all_acc.append(1-test_error)
+            df.to_csv(os.path.join(args.save_dir, 'fold_{}.csv'.format(folds[ckpt_idx])), index=False)
 
-    final_df = pd.DataFrame({'folds': folds, 'test_auc': all_auc, 'test_acc': all_acc})
-    if len(folds) != args.k:
-        save_name = 'summary_partial_{}_{}.csv'.format(folds[0], folds[-1])
-    else:
-        save_name = 'summary.csv'
-    final_df.to_csv(os.path.join(args.save_dir, save_name))
+        final_df = pd.DataFrame({'folds': folds, 'test_auc': all_auc, 'test_acc': all_acc})
+        if len(folds) != args.k:
+            save_name = 'summary_partial_{}_{}.csv'.format(folds[0], folds[-1])
+        else:
+            save_name = 'summary.csv'
+        final_df.to_csv(os.path.join(args.save_dir, save_name))
