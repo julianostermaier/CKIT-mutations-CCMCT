@@ -121,7 +121,7 @@ def resnet50_baseline(pretrained=False, model_path='resnet50'):
     return model
 
 def load_pretrained_weights(model, name):
-    if name in model_urls.items():
+    if name in model_urls.keys():
         pretrained_dict = model_zoo.load_url(model_urls[name])
     else:
         pretrained_dict = torch.load(name, map_location="cpu")
