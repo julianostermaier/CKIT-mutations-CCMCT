@@ -125,7 +125,9 @@ def load_pretrained_weights(model, name):
         pretrained_dict = model_zoo.load_url(model_urls[name])
     else:
         pretrained_dict = torch.load(name, map_location="cpu")
-        pretrained_dict = pretrained_dict["state_dict"]
+        print(pretrained_dict.keys())
+        if 'state_dict' in pretrained_dict.keys():
+            pretrained_dict = pretrained_dict["state_dict"]
         # quick fix: edit keys for layer in state dict
         # to be removed
         new_state_dict = OrderedDict()
@@ -133,10 +135,12 @@ def load_pretrained_weights(model, name):
             if k[:10] == 'encoder_q.':
                 name = k[10:]
                 print(name)
+            elif k[:2] == '0.':
+                name = k[2:]
+                print(name)
             new_state_dict[name] = v
         pretrained_dict = new_state_dict
-            
-    model.load_state_dict(pretrained_dict, strict=False)
+    model.load_state_dict(pretrained_dict, strict=True)
     return model
 
 
