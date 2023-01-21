@@ -46,12 +46,11 @@ def initialize_wsi(wsi_path, seg_mask_path=None, seg_params=None, filter_params=
     return wsi_object
 
 def compute_from_patches(wsi_object, clam_pred=None, model=None, feature_extractor=None, batch_size=512,  
-    attn_save_path=None, ref_scores=None, feat_save_path=None, **wsi_kwargs):    
+    attn_save_path=None, ref_scores=None, feat_save_path=None, t=None, **wsi_kwargs):    
     top_left = wsi_kwargs['top_left']
     bot_right = wsi_kwargs['bot_right']
     patch_size = wsi_kwargs['patch_size']
-    
-    roi_dataset = Wsi_Region(wsi_object, **wsi_kwargs)
+    roi_dataset = Wsi_Region(wsi_object, **wsi_kwargs, t=t)
     roi_loader = get_simple_loader(roi_dataset, batch_size=batch_size, num_workers=8)
     print('total number of patches to process: ', len(roi_dataset))
     num_batches = len(roi_loader)

@@ -315,3 +315,10 @@ class HDF5Dataset(Dataset):
 
         return img_1, img_2
 
+
+        magnification_pair = {
+            '0': 1,
+            '1': 2,
+            '2': 3
+        }
+

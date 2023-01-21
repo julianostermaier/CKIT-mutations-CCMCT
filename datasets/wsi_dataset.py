@@ -107,6 +107,7 @@ class Wsi_Region(Dataset):
         if t is None:
             self.transforms = default_transforms()
         else:
+            print('transforms', t)
             self.transforms = t
 
     def __len__(self):

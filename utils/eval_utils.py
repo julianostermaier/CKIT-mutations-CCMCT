@@ -75,22 +75,24 @@ def high_attention_patches(dataset, args, ckpt_path, data_dir, results_dir, k=20
                 ## get features and coordinates
                 _, _, Y_hat, A, _ = model(features)
 
-                # only save patch if WSI prediction is true
-                if label == Y_hat:
-                    A = F.softmax(A, dim=1)  # softmax over N
-                    A = A.view(-1, 1).cpu()
-                    att_values, indices = torch.topk(A, k, dim=0)
+                
+                A = F.softmax(A, dim=1)  # softmax over N
+                A = A.view(-1, 1).cpu()
+                att_values, indices = torch.topk(A, k, dim=0)
 
-                    top_coords = coords[indices]
-                    save_image(slide_id, top_coords, label, data_dir, results_dir)
+                label = int(label.cpu())
+                Y_hat = int(Y_hat.cpu())
+                folder = 'label_{}-pred_{}'.format(label, Y_hat)
 
-def save_image(slide_id, top_coords, label, data_dir, results_dir):
+                top_coords = coords[indices]
+                save_image(slide_id, top_coords, folder, data_dir, results_dir)
+
+def save_image(slide_id, top_coords, folder, data_dir, results_dir):
     slide_path = glob.glob('{}/**/{}.svs'.format(data_dir, slide_id), recursive=True)[0]
     wsi = openslide.open_slide(slide_path)
 
     # create results dir
-    label = int(label.cpu())
-    path = os.path.join(results_dir + '/' + str(label))
+    path = os.path.join(results_dir + '/' + str(folder))
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
 

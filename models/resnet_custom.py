@@ -140,7 +140,7 @@ def load_pretrained_weights(model, name):
                 print(name)
             new_state_dict[name] = v
         pretrained_dict = new_state_dict
-    model.load_state_dict(pretrained_dict, strict=True)
+    model.load_state_dict(pretrained_dict, strict=False)
     return model
 
 

@@ -168,7 +168,7 @@ if __name__ == '__main__':
 		raise NotImplementedError
 
 
-	feature_extractor = resnet50_baseline(pretrained=True, model_path='pretraining/moco/results/checkpoint_0001.pth.tar')
+	feature_extractor = resnet50_baseline(pretrained=True, model_path='pretraining/finetuning/finetuning_high_att/checkpoint_epoch_98.pt')
 	feature_extractor.eval()
 	device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	print('Done!')
@@ -286,17 +286,22 @@ if __name__ == '__main__':
 		
 		features_path = os.path.join(r_slide_save_dir, slide_id+'.pt')
 		h5_path = os.path.join(r_slide_save_dir, slide_id+'.h5')
-	
 
+		t = transforms.Compose(
+			[transforms.ToTensor(),
+			transforms.Normalize(mean = [0.7785, 0.6139, 0.7132], 
+								std = [0.1942, 0.2412, 0.1882])])
+        
 		##### check if h5_features_file exists ######
 		if not os.path.isfile(h5_path) :
+			print(t)
 			_, _, wsi_object = compute_from_patches(wsi_object=wsi_object, 
 											model=model, 
 											feature_extractor=feature_extractor, 
 											batch_size=exp_args.batch_size, **blocky_wsi_kwargs, 
 											attn_save_path=None, feat_save_path=h5_path, 
-											ref_scores=None)				
-		
+											ref_scores=None, t=t)
+            
 		##### check if pt_features_file exists ######
 		if not os.path.isfile(features_path):
 			file = h5py.File(h5_path, "r")
