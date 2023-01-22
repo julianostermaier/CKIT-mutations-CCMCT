@@ -1,3 +1,6 @@
+Predicting c-Kit mutations in Canine Cutaneous Mast Cell Tumors from H&E stained Whole Slide Images with Deep Learning
+===========
+
 CLAM <img src="clam-logo.png" width="280px" align="right" />
 ===========
 Data Efficient and Weakly Supervised Computational Pathology on Whole Slide Images.
