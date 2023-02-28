@@ -1,2 +1,6 @@
 **/.DS_Store
 __pycache__/
+.ipynb_checkpoints
+heatmaps/heatmap_production_results
+heatmaps/heatmap_raw_results
+heatmaps/results

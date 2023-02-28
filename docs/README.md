@@ -1,3 +1,29 @@
+Predicting c-Kit mutations in Canine Cutaneous Mast Cell Tumors from H&E stained Whole Slide Images with Deep Learning
+===========
+
+***Abstract.*** Canine Cutaneous Mast Cell Tumors (MCTs) present one of the most common cancer
+subtypes in dogs. The highly variable behavior of MCTs makes it hard for pathologists to
+diagnose and treat the patients. One important prognostic factor that has been identified
+are mutations in the c-Kit gene, a gene which encodes the receptor tyrosine kinase and
+can influence cell proliferation. Recent developments in the area of computer vision have
+shown, that genetic mutations are reflected in the histopathological phenotype and can be
+accurately classified and detected from hematoxylin and eosin-stained whole slide images
+(WSIs) using deep learning.
+In this thesis, we apply multiple instance learning, a type of weakly-supervised learning
+approach, to a dataset of 457 WSIs of MCTs and show that c-kit mutations can be detected
+from the image alone. We also compare different self-supervised pre-training strategies in
+order to learn better feature representations and improve the accuracy of our mutation
+prediction. Finally, we use the image regions of high diagnostic importance provided by
+our deep learning model, and let pathologists examine the difference in histopathological
+features for each c-Kit mutation.
+
+***About this repository.*** This project was built upon the code repository of CLAM (https://github.com/mahmoodlab/CLAM) and the code repository for MoCo (https://github.com/facebookresearch/moco). The documentation of CLAM can be found below under the section CLAM. In the following part, we will describe the additional functionality that was added for this project.
+
+## Feature extractor pre-training pipeline 
+<img src="pretraining_pipeline.png" width="650px" align="center" />
+
+*This visualization is a modified version inspired by M. Scandalea et. al.(“Automatic grading of cervical biopsies by combining full and self-supervision,” 01 2022. [Online]. Available: https: //www.biorxiv.org/content/10.1101/2022.01.14.476330v1)*
+
 CLAM <img src="clam-logo.png" width="280px" align="right" />
 ===========
 Data Efficient and Weakly Supervised Computational Pathology on Whole Slide Images.

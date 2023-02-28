@@ -1,0 +1,27 @@
+{
+  "arch": "resnet50",
+  "train_dir": "../../data",
+  "wsi_dir": "../../../../data/department/aubreville/datasets/C-KIT/C-KIT-11/",
+  "workers": 32,
+  "epochs": 200,
+  "start_epoch": 7,
+  "batch_size": 32,
+  "lr": 0.012,
+  "schedule": [
+    120,
+    160
+  ],
+  "momentum": 0.9,
+  "weight_decay": 0.0001,
+  "print_freq": 10,
+  "resume": "/pretraining/moco/results/checkpoint_0007.pth.tar",
+  "num_samples": 500000,
+  "seed": null,
+  "moco_dim": 128,
+  "moco_k": 256,
+  "moco_m": 0.999,
+  "moco_t": 0.07,
+  "mlp": false,
+  "aug_plus": false,
+  "cos": false
+}
